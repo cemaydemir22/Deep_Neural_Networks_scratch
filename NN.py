@@ -93,7 +93,7 @@ class NeuralNetwork:
       error_L=np.subtract(output,target)
       self.errors[-1]=error_L
     else:
-       error=np.subtract(output-target)
+       error=np.subtract(output,target)
        if self.activation_func[-1]=="relu":
          error_L=np.multiply(error,self.derivative_relu(self.net_values[-1]))
          self.errors[-1]=error_L

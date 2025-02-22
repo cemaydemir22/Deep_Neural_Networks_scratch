@@ -2,7 +2,7 @@ import numpy as np
 import random as rd
 import math
 
-class NeuralNetwork:
+class NeuralNetworks:
   def __init__(self,layer_sizes,activation_fun):
     """
       Initialization of layers can be done in the following way-> [a0,a1,...,ak,ak+1] where a0,..,ak+1 are positive integers,
@@ -41,12 +41,12 @@ class NeuralNetwork:
       self.net_values[i]=np.add(np.dot(self.weights[i],self.activations[i]),self.bias[i])
       if self.activation_func[i]=="sigmoid":
         self.activations[i+1]=self.sigmoid(self.net_values[i])
-
       elif self.activation_func[i]=="relu":
         self.activations[i+1]=self.relu(self.net_values[i])
-
       elif self.activation_func[i]=="softmax":
         self.activations[i+1]=self.softmax(self.net_values[i])
+      elif self.activation_func[i]=="linear":
+        self.activations[i+1]=self.linear(self.net_values[i])
     return self.activations[-1]
 
   def sigmoid(self, values):
@@ -55,10 +55,22 @@ class NeuralNetwork:
   def relu(self, values):
     return np.maximum(0, values)
 
+  def linear(self,values):
+    return values
+
   def softmax(self, values):
     exp_vals = np.exp(values - np.max(values))
     return exp_vals / np.sum(exp_vals, axis=0, keepdims=True)
 
+  def derivative_relu(self, data):
+        return np.where(data >= 0, 1, 0)
+
+  def derivative_sigmoid(self, data):
+        s = self.sigmoid(data)
+        return s * (1 - s)
+
+  def derivative_linear(self,data):
+    return np.ones_like(data)
 
   def calculate_loss(self,target):
     """ either uses categorical cross entropy  or MSE depending on the activation function of the last layer"""
@@ -67,21 +79,10 @@ class NeuralNetwork:
     loss=0
     if self.activation_func[-1]=="softmax":
       loss = -np.sum(target * np.log(output + eps))
-
-
     else:
       for i in range(len(self.activations[-1])):
         loss = 0.5 * np.sum((target - output)**2)
-
-
     return loss
-
-  def derivative_relu(self, data):
-        return np.where(data >= 0, 1, 0)
-
-  def derivative_sigmoid(self, data):
-        s = self.sigmoid(data)
-        return s * (1 - s)
 
   def backpropagation(self,input_data,target_data,learning_rate):
     self.forward_pass(input_data)
@@ -93,20 +94,26 @@ class NeuralNetwork:
       error_L=np.subtract(output,target)
       self.errors[-1]=error_L
     else:
-       error=np.subtract(output-target)
+       error=np.subtract(output,target)
        if self.activation_func[-1]=="relu":
          error_L=np.multiply(error,self.derivative_relu(self.net_values[-1]))
          self.errors[-1]=error_L
-       else:
+       elif self.activation_func[-1]=="sigmoid":
          error_L=np.multiply(error,self.derivative_sigmoid(self.net_values[-1]))
+         self.errors[-1]=error_L
+       else:
+         error_L=np.multiply(error,self.derivative_linear(self.net_values[-1]))
          self.errors[-1]=error_L
 
     for l in range(len(self.layer_sizes)-3,-1,-1):
       if self.activation_func[l]=="relu":
        error_l=np.multiply(np.matmul(np.transpose(self.weights[l+1]),self.errors[l+1]),self.derivative_relu(self.net_values[l]))
        self.errors[l]=error_l
-      else:
+      elif self.activation_func[l]=="sigmoid":
         error_l=np.multiply(np.matmul(np.transpose(self.weights[l+1]),self.errors[l+1]),self.derivative_sigmoid(self.net_values[l]))
+        self.errors[l]=error_l
+      else:
+        error_l=np.multiply(np.matmul(np.transpose(self.weights[l+1]),self.errors[l+1]),self.derivative_linear(self.net_values[l]))
         self.errors[l]=error_l
     self.update_weights(learning_rate)
 
